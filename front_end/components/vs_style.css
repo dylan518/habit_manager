@@ -1,0 +1,87 @@
+/* VS Code inspired theme for Journal App */
+
+QWidget {
+    background-color: #4b4b4b;
+    color: #d4d4d4;
+    font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+    font-size: 14px;
+}
+
+#file-explorer {
+    background-color: #4e29ab;
+    border: none;
+    min-width: 200px;
+    max-width: 300px;
+}
+
+#file-explorer::item {
+    color: #cccccc;
+    padding: 5px 10px;
+}
+
+#file-explorer::item:selected {
+    background-color: #37373d;
+}
+
+#editor-tabs {
+    background-color: #252526;
+}
+
+#editor-tabs::pane {
+    border: none;
+}
+
+#editor-tabs::tab-bar {
+    alignment: left;
+}
+
+#editor-tabs::tab {
+    background-color: #2d2d2d;
+    color: #969696;
+    padding: 5px 10px;
+    border: none;
+    min-width: 100px;
+}
+
+#editor-tabs::tab:selected {
+    background-color: #1e1e1e;
+    color: #ffffff;
+}
+
+#section-editor {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    border: none;
+}
+
+QPushButton {
+    background-color: #0e639c;
+    color: #ffffff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+}
+
+QPushButton:hover {
+    background-color: #1177bb;
+}
+
+QPushButton:pressed {
+    background-color: #0e5384;
+}
+
+QScrollBar:vertical {
+    background-color: #1e1e1e;
+    width: 14px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #424242;
+    min-height: 30px;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+}

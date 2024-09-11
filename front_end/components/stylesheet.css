@@ -1,0 +1,76 @@
+/* styles.css */
+QWidget {
+    background-color: #121212;
+    color: #ffffff;
+    font-size: 16px;
+}
+
+QScrollArea {
+    background-color: #1E1E1E;
+    border: 1px solid #404040;
+}
+
+QLabel {
+    color: #b3b3b3;
+}
+
+QLineEdit,
+QTextEdit {
+    background-color: #282828;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 8px;
+    color: #ffffff;
+}
+
+QPushButton {
+    background-color: #007500;
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #005c00;
+}
+
+QPushButton:pressed {
+    background-color: #004600;
+}
+
+#dateLabel {
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+QScrollBar:vertical {
+    background: #282828;
+    width: 10px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: #007500;
+    min-height: 20px;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+QListWidget::item {
+    background-color: #1E1E1E;
+    border-radius: 1px;
+    margin-bottom: 1px;
+    padding: 10px 0;
+}
