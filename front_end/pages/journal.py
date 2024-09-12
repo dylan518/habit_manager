@@ -141,8 +141,9 @@ class EntryList(QWidget):
             response = requests.get(f"{API_BASE_URL}/journals")
             journals = response.json()
             self.list_widget.clear()
-            for journal in journals:
-                self.add_entry(journal)
+            if journals:
+                for journal in journals:
+                    self.add_entry(journal)
         except requests.RequestException as e:
             QMessageBox.critical(self, "Error", f"Failed to fetch journals: {str(e)}")
 

@@ -19,6 +19,7 @@ from PyQt5.QtGui import QFont
 import datetime
 from datetime import timedelta
 from datetime import datetime
+import dateutil.parser
 
 API_BASE_URL = "http://localhost:8000/api"
 
@@ -31,7 +32,7 @@ class Task:
         self.title = title
         self.description = description
         self.time_remaining = self.parse_time_string(time_remaining)
-        self.time_created = datetime.fromisoformat(time_created)
+        self.time_created = dateutil.parser.parse(time_created)
         self.completed_at = (
             datetime.fromisoformat(completed_at) if completed_at else None
         )

@@ -9,9 +9,10 @@ from backend.database.models import Task, SubTask, TaskExtension, TaskOrder
 import logging
 from datetime import datetime
 from tzlocal import get_localzone
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
-from datetime import datetime
-from tzlocal import get_localzone
+
 
 router = APIRouter()
 logging.basicConfig(level=logging.DEBUG)
@@ -129,11 +130,20 @@ def create_task(task: TaskCreate, db: Session = Depends(get_db)):
         db.add(db_subtask)
 
     # Add the new task to the end of the order
-    max_order = db.query(TaskOrder).count()
+    max_order = db.query(func.coalesce(func.max(TaskOrder.order), 0)).scalar()
     db_task_order = TaskOrder(task_id=db_task.id, order=max_order + 1)
     db.add(db_task_order)
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        # If there's a conflict, query for the highest order again and use that
+        max_order = db.query(func.coalesce(func.max(TaskOrder.order), 0)).scalar()
+        db_task_order.order = max_order + 1
+        db.add(db_task_order)
+        db.commit()
+
     db.refresh(db_task)
     return db_task
 

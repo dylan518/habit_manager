@@ -1,0 +1,5 @@
+PyQt5==5.15.9
+requests==2.31.0
+fastapi==0.105.0
+sqlalchemy==2.0.17
+pydantic==2.7.3
