@@ -7,10 +7,12 @@ from pydantic import BaseModel, validator
 from backend.database.database import get_db
 from backend.database.models import Task, SubTask, TaskExtension, TaskOrder
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from tzlocal import get_localzone
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
+from pydantic import BaseModel, field_serializer, ConfigDict
+
 
 
 
@@ -70,42 +72,47 @@ class SubTaskResponse(BaseModel):
     description: str
     completed: bool
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class TaskExtensionResponse(BaseModel):
     id: int
-    extension_length: str
-    extension_time: str  # ISO format datetime string
+    extension_length: timedelta
+    extension_time: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer('extension_length')
+    def serialize_extension_length(self, value: timedelta) -> str:
+        return timedelta_to_string(value)
+
+    @field_serializer('extension_time')
+    def serialize_extension_time(self, value: datetime) -> str:
+        return value.isoformat()
+
 
 
 class TaskResponse(BaseModel):
     id: int
     title: str
     description: str
-    time_created: str  # ISO format datetime string
-    original_length: str
-    time_remaining: str
+    time_created: datetime
+    original_length: timedelta
+    time_remaining: timedelta
     is_complete: bool
-    completed_at: Optional[str]  # ISO format datetime string
+    completed_at: Optional[datetime]
     subtasks: List[SubTaskResponse]
     extensions: List[TaskExtensionResponse]
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
-    @classmethod
-    def from_orm(cls, obj):
-        # Convert datetime fields to ISO format strings
-        d = {}
-        for field in cls.__fields__:
-            value = getattr(obj, field)
-            if isinstance(value, datetime):
-                d[field] = value.isoformat()
-            elif isinstance(value, timedelta):
-                d[field] = timedelta_to_string(value)
-            else:
-                d[field] = value
-        return cls(**d)
+    @field_serializer('time_created', 'completed_at')
+    def serialize_datetime(self, value: Optional[datetime]) -> Optional[str]:
+        return value.isoformat() if value else None
 
+    @field_serializer('original_length', 'time_remaining')
+    def serialize_timedelta(self, value: timedelta) -> str:
+        return timedelta_to_string(value)
 
 class TaskOrderUpdate(BaseModel):
     task_ids: List[int]

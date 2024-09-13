@@ -1,3 +1,0 @@
-([('Planner',
-   '/Users/wilson/Documents/GitHub/habbit-manager/dist/Planner',
-   'EXECUTABLE')],)

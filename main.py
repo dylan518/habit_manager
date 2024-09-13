@@ -1,4 +1,15 @@
+import os
 import sys
+
+def set_python_path():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
+    print(f"Python path set to: {sys.path}")
+
+# Call this function at the start
+set_python_path()
+
 import logging
 import time
 import multiprocessing

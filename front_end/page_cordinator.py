@@ -20,7 +20,6 @@ import time
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-
 class PageCoordinator(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -60,6 +59,9 @@ class PageCoordinator(QMainWindow):
         self.check_activity_timer.timeout.connect(self.check_current_activity)
         self.check_activity_timer.start(5000)  # Check every 5 seconds
 
+        # Store the last known activity
+        self.current_activity = None
+
         # Start by checking the current activity
         self.check_current_activity()
 
@@ -77,7 +79,12 @@ class PageCoordinator(QMainWindow):
             response = requests.get(f"{self.api_base_url}/current-activity")
             if response.status_code == 200:
                 data = response.json()
-                self.handle_activity(data, from_check=True)
+                if data != self.current_activity:
+                    logger.debug(f"Activity changed: {data}")
+                    self.current_activity = data
+                    self.handle_activity(data, from_check=True)
+                else:
+                    logger.debug("Activity unchanged, not handling.")
             else:
                 logger.error(
                     f"Failed to get current activity. Status code: {response.status_code}"
@@ -143,6 +150,11 @@ class PageCoordinator(QMainWindow):
         self.set_current_page(next_index)
 
     def set_current_page(self, page_number, from_check=False):
+        # Prevent redundant page changes
+        if self.stacked_widget.currentIndex() == page_number:
+            logger.debug(f"Already on page {page_number}, not changing.")
+            return
+
         self.stacked_widget.setCurrentIndex(page_number)
 
         # Manage LockScreen state
@@ -158,10 +170,7 @@ class PageCoordinator(QMainWindow):
                     json={"page_number": page_number},
                     timeout=5,  # Add a timeout to prevent hanging
                 )
-                if response.status_code == 200:
-                    data = response.json()
-                    self.handle_activity(data, from_check=True)
-                else:
+                if response.status_code != 200:
                     logger.error(
                         f"Failed to set page. Status code: {response.status_code}"
                     )
@@ -174,6 +183,7 @@ class PageCoordinator(QMainWindow):
 
     def show_error_message(self, message):
         QMessageBox.critical(self, "Error", message)
+
 
 
 def run_app():

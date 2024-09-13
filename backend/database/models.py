@@ -1,8 +1,10 @@
-from sqlalchemy import Column, Integer, String, DateTime, Date, Time, Boolean, ForeignKey, Interval, Text, ARRAY
+from sqlalchemy import Column, Integer, String, DateTime, Date, Time, Boolean, ForeignKey, Interval, Text, ARRAY, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
+import json
+from datetime import datetime, timedelta
 
 Base = declarative_base()
 
@@ -26,25 +28,34 @@ class Journal(Base):
     daily_record = relationship("DailyRecord", back_populates="journals")
     sections = relationship("JournalSection", back_populates="journal")
 
+
 class DayPlan(Base):
-    __tablename__ = "day_plans"
+    __tablename__ = 'day_plans'
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     mode = Column(String)
-    date = Column(Date, index=True)  # Keep the separate date field
-    start_time = Column(Time, index=True)  # Change back to Time
-    end_time = Column(Time, index=True)  # Change back to Time
-    start_datetime = Column(DateTime, index=True)  # Add this for datetime operations
-    end_datetime = Column(DateTime, index=True)  # Add this for datetime operations
-    location = Column(String, nullable=True)
+    date = Column(Date)
+    start_time = Column(Time)
+    end_time = Column(Time)
+    start_datetime = Column(DateTime, nullable=True)
+    end_datetime = Column(DateTime, nullable=True)
+    location = Column(String)
     status = Column(String, nullable=True)
-    description = Column(String, nullable=True)
-    attendees = Column(ARRAY(String), nullable=True)
-    daily_record_id = Column(Integer, ForeignKey("daily_records.id"))
+    description = Column(String)
+    _attendees = Column(String)  # Store as JSON string
+    daily_record_id = Column(Integer, ForeignKey('daily_records.id'))
     google_event_id = Column(String, nullable=True)
 
     daily_record = relationship("DailyRecord", back_populates="day_plans")
+
+    @property
+    def attendees(self):
+        return json.loads(self._attendees) if self._attendees else []
+
+    @attendees.setter
+    def attendees(self, value):
+        self._attendees = json.dumps(value) if value else '[]'
 class Reminder(Base):
     __tablename__ = "reminders"
 
@@ -59,21 +70,93 @@ class Goal(Base):
     content = Column(String)
     date = Column(Date)
 
+
 class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     description = Column(String)
-    time_created = Column(String)
-    original_length = Column(String)
-    time_remaining = Column(String)
+    time_created = Column(DateTime, default=datetime.utcnow)
+    original_length_seconds = Column(Float)  # Store as seconds
+    time_remaining_seconds = Column(Float)  # Store as seconds
     is_complete = Column(Boolean, default=False)
     completed_at = Column(DateTime, nullable=True)
 
-    subtasks = relationship("SubTask", back_populates="parent_task", cascade="all, delete-orphan")
-    extensions = relationship("TaskExtension", back_populates="task", cascade="all, delete-orphan")
-    task_order = relationship("TaskOrder", back_populates="task", uselist=False, cascade="all, delete-orphan")
+    subtasks = relationship(
+        "SubTask",
+        back_populates="parent_task",
+        cascade="all, delete-orphan",
+        lazy="joined",
+    )
+    extensions = relationship(
+        "TaskExtension",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        lazy="joined",
+    )
+    task_order = relationship(
+        "TaskOrder",
+        back_populates="task",
+        uselist=False,
+        cascade="all, delete-orphan",
+        lazy="joined",
+    )
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @property
+    def original_length(self):
+        return (
+            timedelta(seconds=self.original_length_seconds)
+            if self.original_length_seconds is not None
+            else None
+        )
+
+    @original_length.setter
+    def original_length(self, value):
+        if isinstance(value, timedelta):
+            self.original_length_seconds = value.total_seconds()
+        else:
+            self.original_length_seconds = value
+
+    @property
+    def time_remaining(self):
+        return (
+            timedelta(seconds=self.time_remaining_seconds)
+            if self.time_remaining_seconds is not None
+            else None
+        )
+
+    @time_remaining.setter
+    def time_remaining(self, value):
+        if isinstance(value, timedelta):
+            self.time_remaining_seconds = value.total_seconds()
+        else:
+            self.time_remaining_seconds = value
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "time_created": self.time_created.isoformat()
+            if self.time_created
+            else None,
+            "original_length": timedelta_to_string(self.original_length)
+            if self.original_length
+            else None,
+            "time_remaining": timedelta_to_string(self.time_remaining)
+            if self.time_remaining
+            else None,
+            "is_complete": self.is_complete,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
+        }
+
+
 
 class SubTask(Base):
     __tablename__ = "subtasks"
@@ -85,24 +168,55 @@ class SubTask(Base):
 
     parent_task = relationship("Task", back_populates="subtasks")
 
+
 class TaskExtension(Base):
     __tablename__ = "task_extensions"
 
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("tasks.id"))
-    extension_length = Column(Interval)
-    extension_time = Column(DateTime)
+    extension_length_seconds = Column(Float)  # Store as seconds
+    extension_time = Column(DateTime, default=datetime.utcnow)
 
     task = relationship("Task", back_populates="extensions")
 
-class TaskOrder(Base):
-    __tablename__ = "task_orders"
+    @property
+    def extension_length(self):
+        return (
+            timedelta(seconds=self.extension_length_seconds)
+            if self.extension_length_seconds is not None
+            else None
+        )
 
-    id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("tasks.id"), unique=True)
-    order = Column(Integer, unique=True) 
+    @extension_length.setter
+    def extension_length(self, value):
+        if isinstance(value, timedelta):
+            self.extension_length_seconds = value.total_seconds()
+        else:
+            self.extension_length_seconds = value
+
+
+class TaskOrder(Base):
+    __tablename__ = "task_order"
+
+    task_id = Column(Integer, ForeignKey("tasks.id"), primary_key=True)
+    order = Column(Integer, nullable=False)
 
     task = relationship("Task", back_populates="task_order")
+
+
+# Helper functions (ensure these are accessible where needed)
+def string_to_timedelta(time_str: str) -> timedelta:
+    """Convert a string in format 'HH:MM:SS' to timedelta."""
+    hours, minutes, seconds = map(int, time_str.split(":"))
+    return timedelta(hours=hours, minutes=minutes, seconds=seconds)
+
+
+def timedelta_to_string(td: timedelta) -> str:
+    """Convert a timedelta to string in format 'HH:MM:SS'."""
+    total_seconds = int(td.total_seconds())
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 class DailyProgress(Base):
     __tablename__ = "daily_progress"
