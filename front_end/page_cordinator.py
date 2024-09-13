@@ -10,11 +10,12 @@ from PyQt5.QtWidgets import (
 )
 import multiprocessing
 from PyQt5.QtCore import Qt, QTimer, QObject, pyqtSignal
-from front_end.pages import welcome, schedule, queue_app, event_timer, completion_page
+from front_end.pages import welcome, schedule, queue_app, event_timer, completion_page, google_login
 from front_end.pages.journal import JournalApp
 import requests
 from lock_screen import LockScreen
 import time
+import os
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -36,22 +37,52 @@ class PageCoordinator(QMainWindow):
         self.stacked_widget = QStackedWidget()
         main_layout.addWidget(self.stacked_widget)
 
-        # Initialize pages
+        # Initialize only Google login page
+        self.google_auth_view = google_login.GoogleAuthView()
+        self.stacked_widget.addWidget(self.google_auth_view)
+
+        self.setup_initial_connections()
+        self.check_google_token()
+
+    def setup_initial_connections(self):
+        self.google_auth_view.auth_finished.connect(self.on_google_login_success)
+
+    def check_google_token(self):
+        if not os.path.exists('token.json'):
+            logger.debug("token.json not found. Showing Google Login page.")
+            self.stacked_widget.setCurrentIndex(0)  # Show Google Login page
+        else:
+            logger.debug("token.json found. Initializing app.")
+            self.initialize_app()
+
+    def on_google_login_success(self):
+        logger.debug("Google Login successful. Initializing app.")
+        self.initialize_app()
+
+    def initialize_app(self):
+        # Import other modules here
+        from front_end.pages import welcome, schedule, queue_app, event_timer, completion_page
+        from front_end.pages.journal import JournalApp
+        from lock_screen import LockScreen
+        import requests
+
+        # Initialize other pages
         self.pages = [
-            welcome.WelcomePage(),  # index 0
-            JournalApp(),  # index 1
-            schedule.TimeBlockingApp(),  # index 2
-            queue_app.TaskQueue(),  # index 3
-            event_timer.CircularTimer(lock_in_mode=False),  # index 4
-            completion_page.CompletionForm(),  # index 5
+            self.google_auth_view,  # index 0
+            welcome.WelcomePage(),  # index 1
+            JournalApp(),  # index 2
+            schedule.TimeBlockingApp(),  # index 3
+            queue_app.TaskQueue(),  # index 4
+            event_timer.CircularTimer(lock_in_mode=False),  # index 5
+            completion_page.CompletionForm(),  # index 6
         ]
 
-        # Add pages to the stacked widget
-        for page in self.pages:
+        # Add other pages to the stacked widget
+        for page in self.pages[1:]:
             self.stacked_widget.addWidget(page)
 
         self.lock_screen = LockScreen(self)
-        self.locked_pages = [0, 1, 2]  # Pages where Lock Screen should be active
+        self.locked_pages = [1, 2, 3]  # Pages where Lock Screen should be active
 
         self.setup_connections()
         self.api_base_url = "http://localhost:8000/api"
@@ -66,14 +97,13 @@ class PageCoordinator(QMainWindow):
         self.check_current_activity()
 
     def setup_connections(self):
-        self.pages[0].continue_button.clicked.connect(self.next_page)
-        self.pages[1].journal_completed.connect(self.next_page)
-        self.pages[2].complete_button.clicked.connect(self.next_page)
-        self.pages[3].get_to_work_button.clicked.connect(self.show_event_timer)
-        self.pages[4].timerComplete.connect(self.show_completion)
-        self.pages[4].changeActivityRequested.connect(self.show_queue)
-        self.pages[5].yes_button.clicked.connect(self.show_queue)
-
+        self.pages[1].continue_button.clicked.connect(self.next_page)
+        self.pages[2].journal_completed.connect(self.next_page)
+        self.pages[3].complete_button.clicked.connect(self.next_page)
+        self.pages[4].get_to_work_button.clicked.connect(self.show_event_timer)
+        self.pages[5].timerComplete.connect(self.show_completion)
+        self.pages[5].changeActivityRequested.connect(self.show_queue)
+        self.pages[6].yes_button.clicked.connect(self.show_queue)
     def check_current_activity(self):
         try:
             response = requests.get(f"{self.api_base_url}/current-activity")

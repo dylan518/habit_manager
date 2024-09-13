@@ -1,17 +1,9 @@
 import sys
-from PyQt5.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QVBoxLayout,
-    QWidget,
-    QPushButton,
-    QMessageBox,
-)
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QMessageBox
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtCore import QUrl, pyqtSignal
 from google_auth_oauthlib.flow import Flow
 from urllib.parse import parse_qs, urlparse
-
 
 class GoogleAuthView(QMainWindow):
     auth_finished = pyqtSignal(str)
@@ -28,13 +20,13 @@ class GoogleAuthView(QMainWindow):
         self.web_view = QWebEngineView()
         layout.addWidget(self.web_view)
 
-        load_button = QPushButton("Start Google Authentication")
-        load_button.clicked.connect(self.start_auth)
-        layout.addWidget(load_button)
-
         self.flow = None
         self.web_view.urlChanged.connect(self.url_changed)
         self.auth_finished.connect(self.on_auth_finished)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.start_auth()
 
     def start_auth(self):
         try:
@@ -48,6 +40,7 @@ class GoogleAuthView(QMainWindow):
             self.web_view.load(QUrl(auth_url))
         except Exception as e:
             print(f"Error starting authentication: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to start authentication: {str(e)}")
 
     def url_changed(self, url):
         if url.toString().startswith("http://localhost:8080/"):
@@ -64,21 +57,17 @@ class GoogleAuthView(QMainWindow):
             with open("token.json", "w") as token_file:
                 token_file.write(credentials.to_json())
 
-            QMessageBox.information(
-                self, "Success", "Authentication successful. Token saved to token.json"
-            )
+            print("Authentication successful. Token saved to token.json")
             self.close()
         except Exception as e:
             print(f"Error getting token: {str(e)}")
             QMessageBox.critical(self, "Error", f"Failed to get token: {str(e)}")
-
 
 def main():
     app = QApplication(sys.argv)
     window = GoogleAuthView()
     window.show()
     sys.exit(app.exec_())
-
 
 if __name__ == "__main__":
     main()
