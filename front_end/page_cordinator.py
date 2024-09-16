@@ -57,6 +57,7 @@ class PageCoordinator(QMainWindow):
 
     def on_google_login_success(self):
         logger.debug("Google Login successful. Initializing app.")
+        self.set_current_page(1)  # Set to the welcome page after login (index 1)
         self.initialize_app()
 
     def initialize_app(self):
